@@ -1,4 +1,5 @@
 // 평가 규칙·위치 계산 (화면/저장소와 무관한 순수 로직)
+import { createHmac } from "node:crypto";
 import roster from "./roster.mjs";
 
 // 평가표 B열 요소와 점수 입력 셀(행). 열은 조원 순서대로 E~K.
@@ -104,4 +105,17 @@ export function toCells(rec) {
     });
   });
   return cells;
+}
+
+// ---- 개인 입장 코드: ADMIN_KEY 로 학생마다 다른 6글자 코드를 계산 (저장하지 않음) ----
+const CODE_CHARS = "23456789abcdefghjkmnpqrstuvwxyz";   // 헷갈리는 0,o,1,l,i 제외
+export function codeFor(secret, cls, no) {
+  const h = createHmac("sha256", `${secret}:personal-code`).update(`${cls}-${no}`).digest();
+  let out = "";
+  for (let i = 0; i < 6; i++) out += CODE_CHARS[h[i] % CODE_CHARS.length];
+  return out;
+}
+export const normCode = (s) => String(s ?? "").trim().toLowerCase();
+export function allCodes(secret) {
+  return roster.map((s) => ({ cls: s.cls, no: s.no, name: s.name, code: codeFor(secret, s.cls, s.no) }));
 }

@@ -8,7 +8,7 @@ export default async (req) => {
     setJSON: (k, v) => blobs.setJSON(k, v),
     list: async () => (await blobs.list()).blobs.map((b) => b.key),
   };
-  return handle(req, { store, env: { ADMIN_KEY: Netlify.env.get("ADMIN_KEY"), ACCESS_CODE: Netlify.env.get("ACCESS_CODE") } });
+  return handle(req, { store, env: { ADMIN_KEY: Netlify.env.get("ADMIN_KEY"), ACCESS_CODE: Netlify.env.get("ACCESS_CODE"), PERSONAL_CODES: Netlify.env.get("PERSONAL_CODES") } });
 };
 
 export const config = { path: "/api/*" };

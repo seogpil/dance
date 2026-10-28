@@ -33,3 +33,24 @@ r = await call("/api/export?key=secret", null, "GET"); assert.equal(r.count, 1);
 // 위치 확인: 1반 evaluator 인덱스
 const idx = roster.filter(s => s.cls === 1).sort((a, b) => a.no - b.no).findIndex(s => s.no === ev.no);
 console.log("evaluator", ev.no, ev.name, "block index", idx, cellFor(1, ev.no, 1, 0, 0), cellFor(9, 25, 4, 6, 8));
+
+// ---- 개인 입장 코드 ----
+{
+  const envP = { ADMIN_KEY: "secret", PERSONAL_CODES: "true" };
+  const callP = async (path, body, method = "POST") => {
+    const r = await handle(new Request("https://x.test" + path, { method, body: method === "POST" ? JSON.stringify(body) : undefined }), { store, env: envP });
+    const ct = r.headers.get("content-type") || "";
+    return { status: r.status, ct, ...(ct.includes("json") ? await r.json() : { text: await r.text() }) };
+  };
+  const csv = await callP("/api/codes?key=secret", null, "GET");
+  const lines = csv.text.trim().split("\r\n"); assert.equal(lines.length, 227);
+  const code1 = lines.find(l => l.startsWith("1,1,")).split(",")[3];
+  const code2 = lines.find(l => l.startsWith("1,2,")).split(",")[3];
+  assert.notEqual(code1, code2); assert.equal(code1.length, 6);
+  assert.equal((await callP("/api/codes?key=bad", null, "GET")).status, 403);
+  let r = await callP("/api/login", { cls: 1, no: 1, name: "강다인" }); assert.equal(r.status, 403); console.log("코드 없음:", r.message);
+  r = await callP("/api/login", { cls: 1, no: 1, name: "강다인", code: code2 }); assert.equal(r.status, 403);   // 남의 코드
+  r = await callP("/api/login", { cls: 1, no: 1, name: "강다인", code: code1.toUpperCase() }); assert.ok(r.ok);  // 대문자도 허용
+  r = await callP("/api/login", { cls: 1, no: 1, name: "엉터리", code: code1 }); assert.equal(r.status, 401);
+  console.log("개인 코드 시험 통과, 예:", code1, code2);
+}
