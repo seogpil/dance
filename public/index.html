@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1학년 춤 수행평가 입력</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --mute:#667085; --line:#d9dde5; --acc:#2563eb; --bad:#c62828; --ok:#2e7d32; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12151b; --card:#1b2029; --ink:#e8ebf2; --mute:#9aa4b5; --line:#313847; --acc:#6ea0ff; --bad:#ff8a80; --ok:#81c995; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Malgun Gothic","Apple SD Gothic Neo",sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:980px; margin:0 auto; padding:16px; }
+  h1 { font-size:1.25rem; margin:8px 0 14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; }
+  label { display:flex; flex-direction:column; font-size:.85rem; color:var(--mute); gap:4px; }
+  input, select, button { font:inherit; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  input[type=number] { width:96px; } input#name { width:130px; }
+  button { background:var(--acc); color:#fff; border:0; cursor:pointer; padding:10px 16px; }
+  button.sub { background:transparent; color:var(--acc); border:1px solid var(--acc); }
+  .msg { margin:10px 0 0; font-size:.92rem; min-height:1.2em; } .msg.bad { color:var(--bad); } .msg.ok { color:var(--ok); }
+  .hide { display:none; }
+  .tablewrap { overflow-x:auto; }
+  table { border-collapse:collapse; min-width:100%; }
+  th, td { border:1px solid var(--line); padding:6px; text-align:center; white-space:nowrap; font-size:.9rem; }
+  th { background:rgba(127,127,127,.12); }
+  td.who { text-align:left; font-weight:600; position:sticky; left:0; background:var(--card); }
+  td select, td input { width:76px; padding:6px 4px; }
+  .hint { color:var(--mute); font-size:.82rem; line-height:1.5; }
+</style>
+</head>
+<body>
+<main>
+  <h1>1학년 춤 수행평가 점수 입력</h1>
+
+  <section class="card" id="step1">
+    <div class="row">
+      <label>반 <select id="cls"></select></label>
+      <label>번호 <input id="no" type="number" min="1" inputmode="numeric"></label>
+      <label>이름 <input id="name" autocomplete="off"></label>
+      <label id="codeWrap" class="hide">입장 코드 <input id="code" autocomplete="off"></label>
+      <button id="loginBtn">확인</button>
+    </div>
+    <p class="msg" id="msg1"></p>
+    <p class="hint">내 반·번호·이름이 1학년명렬과 같아야 입력할 수 있습니다. 내가 입력한 점수는 나에게만 보입니다.</p>
+  </section>
+
+  <section class="card hide" id="step2">
+    <div class="row">
+      <label>평가할 조장 <select id="leader"></select></label>
+      <button class="sub" id="loadBtn">불러오기</button>
+    </div>
+    <p class="msg" id="msg2"></p>
+  </section>
+
+  <section class="card hide" id="step3">
+    <div class="tablewrap"><table id="grid"></table></div>
+    <p class="hint">칸을 비워 두면 입력하지 않은 것으로 저장됩니다. 다시 저장하면 이전 내용이 새 내용으로 바뀝니다.</p>
+    <div class="row"><button id="saveBtn">저장</button></div>
+    <p class="msg" id="msg3"></p>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const msg = (id, text, kind) => { const e = $(id); e.textContent = text || ""; e.className = "msg " + (kind || ""); };
+for (let i = 1; i <= 9; i++) $("cls").add(new Option(i + "반", i));
+
+let me = null, form = null;
+const ident = () => ({ cls: +$("cls").value, no: +$("no").value, name: $("name").value.trim(), code: $("code").value });
+
+async function api(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({ ok: false, message: "서버 응답을 읽지 못했습니다." }));
+  return { status: r.status, ...j };
+}
+
+$("loginBtn").onclick = async () => {
+  msg("msg1", "확인 중…");
+  const r = await api("/api/login", ident());
+  if (!r.ok) { me = null; $("step2").classList.add("hide"); $("step3").classList.add("hide");
+    if (r.status === 403) $("codeWrap").classList.remove("hide");
+    return msg("msg1", r.message, "bad"); }
+  me = r.student;
+  msg("msg1", `${me.cls}반 ${me.no}번 ${me.name} 확인되었습니다. (참)`, "ok");
+  const sel = $("leader"); sel.innerHTML = "";
+  r.leaders.forEach((l) => sel.add(new Option(`${l.group}조 · ${l.leader}`, l.group)));
+  $("step2").classList.remove("hide"); $("step3").classList.add("hide"); msg("msg2", "");
+};
+
+$("loadBtn").onclick = async () => {
+  if (!me) return;
+  msg("msg2", "불러오는 중…");
+  const r = await api("/api/form", { ...ident(), group: +$("leader").value });
+  if (!r.ok) return msg("msg2", r.message, "bad");
+  form = r; msg("msg2", r.savedAt ? "이전에 저장한 내용을 불러왔습니다." : "");
+  const head = "<tr><th>조원</th>" + r.criteria.map((c) => `<th>${c.key}</th>`).join("") + "</tr>";
+  const body = r.members.map((m) => {
+    const tds = r.criteria.map((c) => {
+      const v = (r.scores[m.slot] || {})[c.key] ?? "";
+      if (c.allowed) {
+        const opts = ["<option value=''></option>"].concat(c.allowed.map((a) => `<option ${String(a) === String(v) ? "selected" : ""}>${a}</option>`));
+        return `<td><select data-slot="${m.slot}" data-key="${c.key}">${opts.join("")}</select></td>`;
+      }
+      return `<td><input type="number" min="${c.range[0]}" max="${c.range[1]}" step="1" value="${v}" data-slot="${m.slot}" data-key="${c.key}"></td>`;
+    }).join("");
+    return `<tr><td class="who">${m.leader ? "★ " : ""}${m.name}</td>${tds}</tr>`;
+  }).join("");
+  $("grid").innerHTML = head + body;
+  $("step3").classList.remove("hide"); msg("msg3", "");
+};
+
+$("saveBtn").onclick = async () => {
+  const scores = {};
+  document.querySelectorAll("#grid [data-slot]").forEach((el) => {
+    (scores[el.dataset.slot] ||= {})[el.dataset.key] = el.value;
+  });
+  msg("msg3", "저장 중…");
+  const r = await api("/api/submit", { ...ident(), group: +$("leader").value, scores });
+  if (!r.ok) return msg("msg3", r.message, "bad");
+  msg("msg3", "저장되었습니다. " + new Date(r.savedAt).toLocaleString("ko-KR"), "ok");
+};
+</script>
+</body>
+</html>
