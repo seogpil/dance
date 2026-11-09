@@ -2,7 +2,7 @@
 
 학생(심판)이 각자 폰/PC로 점수를 입력하고, 선생님이 한 번에 모아 엑셀 1~9반 시트에 채우는 구조입니다.
 입력한 사람은 **자기가 입력한 점수만** 볼 수 있습니다.
-명단(`netlify/functions/roster.mjs`)은 `1학년_춤_1_1.xlsm`의 1학년명렬에서 만들었습니다.
+명단(`netlify/functions/roster.mjs`)은 `1학년_춤_1_3.xlsm`의 1학년명렬에서 만들었습니다.
 
 > 주의: Netlify "끌어다 놓기(Drop)"는 서버 기능(Functions)을 올리지 못합니다. 아래 A 또는 B 방법으로 올리세요.
 
@@ -39,7 +39,7 @@ netlify deploy --prod
 1. 주소창에 `https://내사이트주소/api/export?key=ADMIN_KEY값` 을 열고 나온 글자를 `scores.json` 으로 저장
 2. 엑셀에 채우기 (`.xlsm` 은 매크로·확인 단추가 그대로 남습니다)
    ```
-   python tools/fill_workbook.py scores.json 1학년_춤_1_1.xlsm 결과.xlsm
+   python tools/fill_workbook.py scores.json 1학년_춤_1_3.xlsm 결과.xlsm
    ```
 3. 결과 파일을 열면 1학년명렬 시트의 합계도 자동 계산됩니다.
 
@@ -47,7 +47,7 @@ netlify deploy --prod
 **열 = 입력한 학생의 칸(반 번호순 9칸씩) + 요소 순서(정확성, 리듬박자, 표현력, 팀워크, 동선, 활동성, 수행노력, 협업, 태도)**.
 
 ## 명단이 바뀌면
-`python tools/make_roster.py 1학년_춤_1_1.xlsm` 실행 후 다시 올리세요(GitHub 에 파일을 덮어쓰면 자동 배포).
+`python tools/make_roster.py 1학년_춤_1_3.xlsm` 실행 후 다시 올리세요(GitHub 에 파일을 덮어쓰면 자동 배포).
 
 ## 알아둘 점
 - 본인 확인은 반·번호·이름 일치뿐이라 `ACCESS_CODE` 를 쓰는 것이 좋습니다.

@@ -137,7 +137,7 @@ export default [
 "cls": 1,
 "no": 20,
 "name": "장태희",
-"group": 1,
+"group": 4,
 "leader": false
 },
 {

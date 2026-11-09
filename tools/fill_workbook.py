@@ -1,6 +1,6 @@
 """관리자 취합: /api/export 로 받은 scores.json 을 1~9반 시트의 정확한 칸에 써 넣습니다.
 
-사용:  python tools/fill_workbook.py scores.json 1학년_춤_1_1.xlsm 결과.xlsm
+사용:  python tools/fill_workbook.py scores.json 1학년_춤_1_3.xlsm 결과.xlsm
  - .xlsm 은 파일 안의 XML 만 고쳐서 매크로·`확인` 단추가 그대로 남습니다. (pip 설치 필요 없음)
  - .xlsx 는 openpyxl 로 씁니다.            (pip install openpyxl)
 """
