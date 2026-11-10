@@ -116,6 +116,11 @@ export function codeFor(secret, cls, no) {
   return out;
 }
 export const normCode = (s) => String(s ?? "").trim().toLowerCase();
+// 명단(roster.mjs)에 저장된 학생별 코드를 우선 쓰고, 없으면 secret 으로 계산한다.
+export function studentCode(s, secret) {
+  if (s.code) return s.code;
+  return secret ? codeFor(secret, s.cls, s.no) : null;
+}
 export function allCodes(secret) {
-  return roster.map((s) => ({ cls: s.cls, no: s.no, name: s.name, code: codeFor(secret, s.cls, s.no) }));
+  return roster.map((s) => ({ cls: s.cls, no: s.no, name: s.name, code: studentCode(s, secret) }));
 }

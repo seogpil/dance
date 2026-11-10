@@ -1,5 +1,5 @@
 import {
-  CRITERIA, ALLOW_OWN_GROUP, findStudent, leaders, groupMembers, cleanScores, toCells, codeFor, normCode, allCodes,
+  CRITERIA, ALLOW_OWN_GROUP, findStudent, leaders, groupMembers, cleanScores, toCells, studentCode, normCode, allCodes,
 } from "./core.mjs";
 
 const json = (obj, status = 200) =>
@@ -41,8 +41,9 @@ export async function handle(req, { store, env = {} }) {
 
   if (env.PERSONAL_CODES && String(env.PERSONAL_CODES).toLowerCase() !== "false") {
     // 학생마다 다른 입장 코드 (ADMIN_KEY 로 계산)
-    if (!env.ADMIN_KEY) return bad("서버 설정(ADMIN_KEY)이 없습니다.", 500);
-    if (normCode(body.code) !== codeFor(env.ADMIN_KEY, me.cls, me.no)) return bad("내 입장 코드가 맞지 않습니다. 선생님께 받은 코드를 입력하세요.", 403);
+    const expected = studentCode(me, env.ADMIN_KEY);
+    if (!expected) return bad("서버 설정(입장 코드)이 없습니다.", 500);
+    if (normCode(body.code) !== expected) return bad("내 입장 코드가 맞지 않습니다. 선생님께 받은 코드를 입력하세요.", 403);
   } else if (env.ACCESS_CODE && String(body.code ?? "") !== env.ACCESS_CODE) {
     return bad("입장 코드가 맞지 않습니다.", 403);
   }
