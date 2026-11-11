@@ -4,6 +4,7 @@ import { handle } from "./handler.mjs";
 const wrap = (blobs) => ({
   get: (k) => blobs.get(k, { type: "json" }),
   setJSON: (k, v) => blobs.setJSON(k, v),
+  delete: (k) => blobs.delete(k),
   list: async () => (await blobs.list()).blobs.map((b) => b.key),
 });
 

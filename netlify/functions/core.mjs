@@ -84,20 +84,53 @@ export function cleanScores(R, cls, group, scores) {
   return { scores: out };
 }
 
-export function toCells(R, rec) {
-  const members = groupMembers(R, rec.cls, rec.group);
-  const cells = [];
-  members.forEach((m, si) => {
+// ---- 점수는 "평가자 번호 → 받은 학생 번호 → 요소 → 점수" 로 저장한다 (조가 바뀌어도 학생을 따라감) ----
+const hasVals = (v) => v && Object.keys(v).length > 0;
+
+// 화면의 칸(E~K) 기준 점수 -> 받은 학생 번호 기준
+export function slotsToNumbers(R, cls, group, slotScores) {
+  const out = {};
+  for (const m of groupMembers(R, cls, group)) out[m.no] = slotScores?.[m.slot] || {};
+  return out;
+}
+
+// 저장된 기록(예전 방식 + 새 방식)을 평가자별 하나로 합친다.
+//  예전 기록: key 가 반-번호-조, scores 가 칸(E~K) 기준 -> 현재 명단으로 번호로 바꿔 준다.
+//  새 기록 : v === 2, key 가 반-번호, scores 가 학생 번호 기준
+export function normalizeRecords(R, recs) {
+  const sorted = [...recs].sort((a, b) => String(a.savedAt).localeCompare(String(b.savedAt)));
+  const out = new Map();
+  for (const r of sorted) {
+    const id = `${r.cls}-${r.no}`;
+    const cur = out.get(id) || { v: 2, cls: r.cls, no: r.no, name: r.name, scores: {}, savedAt: r.savedAt };
+    if (r.v === 2) {
+      for (const [t, vals] of Object.entries(r.scores || {})) { if (hasVals(vals)) cur.scores[t] = vals; else delete cur.scores[t]; }
+    } else {
+      for (const m of groupMembers(R, r.cls, r.group)) { const vals = r.scores?.[m.slot]; if (hasVals(vals)) cur.scores[m.no] = vals; }
+    }
+    cur.name = r.name; cur.savedAt = r.savedAt; out.set(id, cur);
+  }
+  return out;
+}
+
+// 평가자 한 명의 기록 -> 1~9반 시트 칸 목록. 받은 학생의 "지금" 조와 순서로 위치를 계산한다.
+export function recordCells(R, rec) {
+  const cells = [], skipped = [];
+  for (const [t, vals] of Object.entries(rec.scores || {})) {
+    const s = R.find((x) => x.cls === rec.cls && x.no === Number(t));
+    const members = s && s.group ? groupMembers(R, rec.cls, s.group) : [];
+    const si = s ? members.findIndex((m) => m.no === s.no) : -1;
+    if (si < 0) { skipped.push({ evaluator: `${rec.cls}반 ${rec.no}번 ${rec.name}`, target: `${rec.cls}반 ${t}번`, reason: s ? "조가 없음" : "명단에 없음" }); continue; }
     CRITERIA.forEach((c, ci) => {
-      const v = rec.scores?.[m.slot]?.[c.key];
+      const v = vals[c.key];
       if (v === undefined) return;
-      const pos = cellFor(R, rec.cls, rec.no, rec.group, si, ci);
-      if (!pos) return;
+      const pos = cellFor(R, rec.cls, rec.no, s.group, si, ci);
+      if (!pos) { return; }
       cells.push({ sheet: pos.sheet, cell: pos.cell, value: v, criterion: c.key,
-                   evaluator: `${rec.no} ${rec.name}`, target: `${m.slot}3 ${m.name}`, group: rec.group });
+                   evaluator: `${rec.no} ${rec.name}`, target: `${members[si].slot}3 ${s.name}`, group: s.group });
     });
-  });
-  return cells;
+  }
+  return { cells, skipped };
 }
 
 // ---- 개인 입장 코드: 명단에 저장된 학생별 code 를 쓰고, 없으면 secret 으로 계산 ----
@@ -120,11 +153,11 @@ export function allCodes(R, secret) {
 
 // ---- 명단 올리기 ----
 // incoming: [{cls,no,name,group,leader}] -> 검사 후 기존 코드는 유지하고 새 학생에게만 코드를 만든다.
-export function buildRoster(incoming, existing) {
+export function buildRoster(incoming, existing, secret) {
   const errors = [], warnings = [];
   if (!Array.isArray(incoming) || incoming.length === 0) return { errors: ["명단이 비어 있습니다."], warnings };
   const seen = new Set(), list = [];
-  const oldCode = new Map(existing.map((s) => [`${s.cls}-${s.no}`, studentCode(s, null)]));
+  const oldCode = new Map(existing.map((s) => [`${s.cls}-${s.no}`, studentCode(s, secret)]));   // 지금 쓰이는 코드(계산 코드 포함)를 그대로 고정
   for (const [i, s] of incoming.entries()) {
     const cls = Number(s.cls), no = Number(s.no), name = String(s.name ?? "").trim();
     const where = `${s.row ?? i + 2}행`;
